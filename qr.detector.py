@@ -23,7 +23,7 @@ def capture_qr_codes():
 
                 # Read the saved image and decode QR codes
                 barcodes = decode(frame)
-
+#test
                 if barcodes:
                     for barcode in barcodes:
                         qr_data = barcode.data.decode('utf-8')
