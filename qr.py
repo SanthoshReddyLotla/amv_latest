@@ -1,46 +1,59 @@
-import picamera2
 import cv2
-import pyzbar.pyzbar as pyzbar
-import numpy as np
+from picamera import PiCamera
+from pyzbar import pyzbar
 
-# Initialize the camera
-camera = picamera2.Picamera2()
-camera.start_preview()
+def detect_qr_codes(frame):
+    # Convert the frame to grayscale
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-def decode_qr(frame):
-    """Decodes QR codes in a frame."""
-    barcodes = pyzbar.decode(frame)
+    # Detect QR codes in the frame
+    barcodes = pyzbar.decode(gray)
+
+    # Process detected QR codes
     for barcode in barcodes:
-        qr_data = barcode.data.decode("utf-8")
-        return qr_data
+        # Extract QR code data and draw a rectangle around it
+        (x, y, w, h) = barcode.rect
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
-while True:
-    # Capture a frame from the camera
-    frame = camera.capture_array()
+        barcode_data = barcode.data.decode("utf-8")
+        cv2.putText(frame, barcode_data, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
-    # Convert the frame to RGB (OpenCV uses BGR by default)
-    frame = frame[:, :, ::-1]
+        # Return the QR code data
+        return barcode_data
 
-    # Resize the frame if needed
-    # frame = cv2.resize(frame, (640, 480))  # adjust resolution if needed
+    # If no QR code is detected, return None
+    return None
 
-    # Draw a bounding box around the detected QR code (optional)
-    qr_data = decode_qr(frame)
-    if qr_data:
-        (x, y, w, h) = pyzbar.decode(frame)[0].rectangle
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+# Initialize PiCamera
+camera = PiCamera()
 
-    # Display the frame with QR code info (if any)
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    cv2.putText(frame, f"QR Code: {qr_data or ''}", (10, 30), font, 1, (0, 255, 0), 2)
+# Set camera resolution (adjust as needed)
+camera.resolution = (640, 480)
 
-    # Show the camera feed
-    cv2.imshow("QR Code Reader", frame)
+# Initialize OpenCV window
+cv2.namedWindow("QR Code Reader")
 
-    # Check for key press (to exit)
-    if cv2.waitKey(1) == ord("q"):
-        break
+try:
+    while True:
+        # Capture a frame from the camera
+        frame = camera.capture_continuous(rawCapture, format="bgr")
+        frame = frame.array
 
-# Clean up
-camera.stop_preview()
-cv2.destroyAllWindows()
+        # Detect QR codes in the frame
+        qr_data = detect_qr_codes(frame)
+
+        # Display the frame with detected QR codes
+        cv2.imshow("QR Code Reader", frame)
+
+        # If QR code is detected, print the data
+        if qr_data:
+            print("Detected QR code:", qr_data)
+
+        # Check for the 'q' key to exit the loop
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+finally:
+    # Release resources
+    cv2.destroyAllWindows()
+    camera.close()
