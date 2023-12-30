@@ -5,7 +5,7 @@ from pyzbar.pyzbar import decode
 import picamera2
 
 def capture_qr_codes():
-    with picamera2.Picamera2(resolution=(640, 480)) as camera:  # Set resolution here
+    with picamera2.Picamera2() as camera:  # Removed resolution setting
         try:
             camera.configure(
                 framerate=24,          # Set framerate
