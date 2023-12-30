@@ -1,0 +1,7 @@
+Create a Virtual Environment:
+
+Isolates Python environments for project-specific dependencies.
+Steps:
+Create the environment: python3 -m venv path/to/venv
+Activate it: source path/to/venv/bin/activate
+Install picamera within the environment: pip install picamera
