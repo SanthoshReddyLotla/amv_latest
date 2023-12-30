@@ -1,21 +1,21 @@
-from time import sleep
+import time
 import numpy as np
 import cv2
-from PIL import Image
 from pyzbar.pyzbar import decode
-from picamera.array import PiRGBArray
-from picamera import PiCamera
+import picamera2
 
 def capture_qr_codes():
-    with PiCamera() as camera:
-        camera.resolution = (640, 480)  # Set the resolution according to your requirements
-        camera.framerate = 24  # Set the frame rate (adjust as needed)
-        raw_capture = PiRGBArray(camera, size=camera.resolution)
+    with picamera2.Picamera2() as camera:
+        camera.configure(
+            resolution=(640, 480),  # Set the resolution
+            framerate=24,          # Set the frame rate
+            format="rgb"           # Specify RGB format
+        )
 
         sleep(2)  # Allow the camera to warm up
 
         try:
-            for frame in camera.capture_continuous(raw_capture, format="bgr", use_video_port=True):
+            for frame in camera.capture_continuous(output_format="rgb"):
                 image = frame.array
 
                 # Convert to grayscale for decoding
@@ -29,11 +29,6 @@ def capture_qr_codes():
                         qr_data = barcode.data.decode('utf-8')
                         print(f"QR Code Data: {qr_data}")
                         # Perform actions based on the QR data here
-
-                raw_capture.truncate(0)  # Clear the stream in preparation for the next frame
-
-                # Adjust the delay between captures as needed
-                sleep(0.1)
 
         except KeyboardInterrupt:
             pass
