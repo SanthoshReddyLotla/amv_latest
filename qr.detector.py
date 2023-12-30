@@ -1,25 +1,28 @@
 from time import sleep
-from io import BytesIO
-import picamera
+import numpy as np
+import cv2
 from PIL import Image
 from pyzbar.pyzbar import decode
+from picamera.array import PiRGBArray
+from picamera import PiCamera
 
 def capture_qr_codes():
-    with picamera.PiCamera() as camera:
+    with PiCamera() as camera:
         camera.resolution = (640, 480)  # Set the resolution according to your requirements
+        camera.framerate = 24  # Set the frame rate (adjust as needed)
+        raw_capture = PiRGBArray(camera, size=camera.resolution)
+
         sleep(2)  # Allow the camera to warm up
 
         try:
-            stream = BytesIO()
-            for _ in camera.capture_continuous(stream, format='jpeg'):
-                stream.seek(0)  # Reset stream position to the beginning
-                image = Image.open(stream)  # Open image using PIL
+            for frame in camera.capture_continuous(raw_capture, format="bgr", use_video_port=True):
+                image = frame.array
 
-                # Convert PIL image to numpy array for decoding
-                frame = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+                # Convert to grayscale for decoding
+                gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
                 # Decode QR codes
-                barcodes = decode(frame)
+                barcodes = decode(gray)
 
                 if barcodes:
                     for barcode in barcodes:
@@ -27,16 +30,13 @@ def capture_qr_codes():
                         print(f"QR Code Data: {qr_data}")
                         # Perform actions based on the QR data here
 
-                stream.seek(0)
-                stream.truncate()
+                raw_capture.truncate(0)  # Clear the stream in preparation for the next frame
 
                 # Adjust the delay between captures as needed
                 sleep(0.1)
 
         except KeyboardInterrupt:
             pass
-        finally:
-            camera.close()
 
 # Run the function to start capturing images and detecting QR codes
 capture_qr_codes()
