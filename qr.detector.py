@@ -5,16 +5,16 @@ from pyzbar.pyzbar import decode
 import picamera2
 
 def capture_qr_codes():
-    with picamera2.Picamera2() as camera:
-        camera.configure(
-            resolution=(640, 480),  # Set the resolution
-            framerate=24,          # Set the frame rate
-            format="rgb"           # Specify RGB format
-        )
-
-        sleep(2)  # Allow the camera to warm up
-
+    with picamera2.Picamera2(resolution=(640, 480)) as camera:  # Set resolution here
         try:
+            camera.configure(
+                framerate=24,          # Set framerate
+                format="rgb"           # Specify RGB format
+            )
+
+            # Warm-up might not be necessary for picamera2
+            # sleep(2)  # Optional warm-up
+
             for frame in camera.capture_continuous(output_format="rgb"):
                 image = frame.array
 
@@ -33,5 +33,5 @@ def capture_qr_codes():
         except KeyboardInterrupt:
             pass
 
-# Run the function to start capturing images and detecting QR codes
+# Run the function to start capturing and detecting QR codes
 capture_qr_codes()
