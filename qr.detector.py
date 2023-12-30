@@ -1,37 +1,41 @@
-import time
-import numpy as np
-import cv2
-from pyzbar.pyzbar import decode
 import picamera2
+import pyzbar.pyzbar as pyzbar
+import cv2
 
-def capture_qr_codes():
-    with picamera2.Picamera2() as camera:  # Removed resolution setting
-        try:
-            camera.configure(
-                framerate=24,          # Set framerate
-                format="rgb"           # Specify RGB format
-            )
+# Initialize camera
+camera = picamera2.Picamera2()
 
-            # Warm-up might not be necessary for picamera2
-            # sleep(2)  # Optional warm-up
+# Configure camera settings
+camera.configure(
+    resolution=(640, 480),  # Adjust resolution as needed
+    framerate=30,          # Adjust framerate as desired
+)
 
-            for frame in camera.capture_continuous(output_format="rgb"):
-                image = frame.array
+# Start preview
+camera.start_preview(fullscreen=False, window=(100, 100, 640, 480))  # Adjust window position if needed
 
-                # Convert to grayscale for decoding
-                gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+while True:
+    # Capture a frame
+    frame = camera.capture_array()
 
-                # Decode QR codes
-                barcodes = decode(gray)
+    # Convert frame to OpenCV format
+    frame_opencv = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # picamera2 uses BGR format
 
-                if barcodes:
-                    for barcode in barcodes:
-                        qr_data = barcode.data.decode('utf-8')
-                        print(f"QR Code Data: {qr_data}")
-                        # Perform actions based on the QR data here
+    # Decode QR codes
+    decodedObjects = pyzbar.decode(frame_opencv)
 
-        except KeyboardInterrupt:
-            pass
+    # Process decoded QR codes
+    for obj in decodedObjects:
+        data = obj.data.decode("utf-8")
+        print("QR Code Data:", data)
 
-# Run the function to start capturing and detecting QR codes
-capture_qr_codes()
+    # Display live feed
+    cv2.imshow("QR Code Scanner", frame_opencv)
+
+    # Exit on 'q' key press
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# Stop preview and close windows
+camera.stop_preview()
+cv2.destroyAllWindows()
