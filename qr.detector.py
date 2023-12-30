@@ -1,41 +1,25 @@
-import picamera2
-import pyzbar.pyzbar as pyzbar
 import cv2
+import numpy as np
+import pyzbar.pyzbar as pyzbar
 
-# Initialize camera
-camera = picamera2.Picamera2()
-
-# Configure camera settings
-camera.configure(
-    resolution=(640, 480),  # Adjust resolution as needed
-    framerate=30,          # Adjust framerate as desired
-)
-
-# Start preview
-camera.start_preview(fullscreen=False, window=(100, 100, 640, 480))  # Adjust window position if needed
+# Initialize the camera
+cap = cv2.VideoCapture(0)
 
 while True:
-    # Capture a frame
-    frame = camera.capture_array()
+    # Capture frame-by-frame
+    ret, frame = cap.read()
 
-    # Convert frame to OpenCV format
-    frame_opencv = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # picamera2 uses BGR format
+    # Decode the QR code
+    decodedObjects = pyzbar.decode(frame)
 
-    # Decode QR codes
-    decodedObjects = pyzbar.decode(frame_opencv)
-
-    # Process decoded QR codes
+    # Display the result
     for obj in decodedObjects:
-        data = obj.data.decode("utf-8")
-        print("QR Code Data:", data)
+        print("QR Code Value: ", obj.data)
 
-    # Display live feed
-    cv2.imshow("QR Code Scanner", frame_opencv)
-
-    # Exit on 'q' key press
+    # Exit the loop
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-# Stop preview and close windows
-camera.stop_preview()
+# Release the camera and close the window
+cap.release()
 cv2.destroyAllWindows()
