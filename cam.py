@@ -1,23 +1,44 @@
-from picamera import PiCamera
-from time import sleep
+import io
+import picamera
+import zbarlight
+from PIL import Image
 
-# Initialize PiCamera
-camera = PiCamera()
+def detect_qr_code(image_stream):
+    # Convert the image stream to a PIL Image
+    image = Image.open(image_stream)
 
-try:
-    # Set camera resolution (adjust as needed)
-    camera.resolution = (1280, 720)
+    # Convert the image to grayscale
+    gray_image = image.convert('L')
 
-    # Start preview for 5 seconds
-    camera.start_preview()
-    sleep(5)
+    # Detect QR codes in the grayscale image
+    codes = zbarlight.scan_codes('qrcode', gray_image)
+    return codes
 
-    # Capture an image
-    camera.capture('/home/pi/image.jpg')  # Replace '/home/pi/image.jpg' with your desired file path and name
+def main():
+    with picamera.PiCamera() as camera:
+        camera.resolution = (640, 480)
+        
+        # Start a preview to display the live feed
+        camera.start_preview()
 
-    # Stop preview
-    camera.stop_preview()
+        # Create a stream to capture images
+        stream = io.BytesIO()
 
-finally:
-    # Release resources
-    camera.close()
+        for _ in camera.capture_continuous(stream, format='jpeg'):
+            # Move to the beginning of the stream to read the captured image
+            stream.seek(0)
+
+            # Detect QR codes in the captured image
+            codes = detect_qr_code(stream)
+            
+            if codes is not None:
+                # If QR code is detected, display its value
+                for code in codes:
+                    print(f"Detected QR code: {code.decode('utf-8')}")
+
+            # Reset the stream for the next capture
+            stream.seek(0)
+            stream.truncate()
+
+if __name__ == "__main__":
+    main()
