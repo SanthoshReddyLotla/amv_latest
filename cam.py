@@ -1,44 +1,49 @@
-import io
-import picamera
-import zbarlight
-from PIL import Image
+from imutils.video import VideoStream
+from pyzbar import pyzbar
+import argparse
+import datetime
+import imutils
+import time
+import cv2
 
-def detect_qr_code(image_stream):
-    # Convert the image stream to a PIL Image
-    image = Image.open(image_stream)
+ap = argparse.ArgumentParser()
+ap.add_argument("-o", "--output", type=str, default="barcodes.csv",
+help="path to output CSV file containing barcodes")
+args = vars(ap.parse_args())
+#vs = VideoStream(src=0).start()  #Uncomment this if you are using Webcam
+vs = VideoStream(usePiCamera=True).start() # For Pi Camera
+time.sleep(2.0)
+csv = open(args["output"], "w")
+found = set()
 
-    # Convert the image to grayscale
-    gray_image = image.convert('L')
+while True:
+frame = vs.read()
+frame = imutils.resize(frame, width=400)
+barcodes = pyzbar.decode(frame)
+for barcode in barcodes:
+(x, y, w, h) = barcode.rect
+cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+barcodeData = barcode.data.decode("utf-8")
+barcodeType = barcode.type
+text = "{} ({})".format(barcodeData, barcodeType)
+        print (text)
+cv2.putText(frame, text, (x, y - 10),
+cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
-    # Detect QR codes in the grayscale image
-    codes = zbarlight.scan_codes('qrcode', gray_image)
-    return codes
+# if the barcode text is currently not in our CSV file, write
+# the timestamp + barcode to disk and update the set
+if barcodeData not in found:
+csv.write("{},{}\n".format(datetime.datetime.now(),
+barcodeData))
+csv.flush()
+found.add(barcodeData)
+cv2.imshow("Barcode Reader", frame)
+key = cv2.waitKey(1) & 0xFF
 
-def main():
-    with picamera.PiCamera() as camera:
-        camera.resolution = (640, 480)
-        
-        # Start a preview to display the live feed
-        camera.start_preview()
-
-        # Create a stream to capture images
-        stream = io.BytesIO()
-
-        for _ in camera.capture_continuous(stream, format='jpeg'):
-            # Move to the beginning of the stream to read the captured image
-            stream.seek(0)
-
-            # Detect QR codes in the captured image
-            codes = detect_qr_code(stream)
-            
-            if codes is not None:
-                # If QR code is detected, display its value
-                for code in codes:
-                    print(f"Detected QR code: {code.decode('utf-8')}")
-
-            # Reset the stream for the next capture
-            stream.seek(0)
-            stream.truncate()
-
-if __name__ == "__main__":
-    main()
+# if the `s` key is pressed, break from the loop
+if key == ord("s"):
+break
+print("[INFO] cleaning up...")
+csv.close()
+cv2.destroyAllWindows()
+vs.stop()
